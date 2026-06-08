@@ -1,4 +1,4 @@
-"""Tools 2, 3, 5, 6, 9: query / search / stats helpers."""
+code_review_graph/tools/query.py"""Tools 2, 3, 5, 6, 9: query / search / stats helpers."""
 
 from __future__ import annotations
 
@@ -403,14 +403,13 @@ def semantic_search_nodes(
     """
     store, root = _get_store(repo_root)
     try:
+        mode_out: list[str] = []
         results = hybrid_search(
             store, query, kind=kind, limit=limit, context_files=context_files,
-            model=model, provider=provider,
+            model=model, provider=provider, _out_mode=mode_out,
         )
 
-        search_mode = "hybrid"
-        if not results:
-            search_mode = "keyword"
+        search_mode = mode_out[0] if mode_out else "keyword"
 
         summary = f"Found {len(results)} node(s) matching '{query}'" + (
             f" (kind={kind})" if kind else ""

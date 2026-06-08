@@ -313,6 +313,7 @@ def hybrid_search(
     context_files: Optional[list[str]] = None,
     model: Optional[str] = None,
     provider: Optional[str] = None,
+    _out_mode: Optional[list] = None,
 ) -> list[dict[str, Any]]:
     """Hybrid search combining FTS5 BM25 and vector embeddings via RRF.
 
@@ -362,9 +363,18 @@ def hybrid_search(
         if emb_results:
             lists_to_merge.append(emb_results)
         merged = rrf_merge(*lists_to_merge)
+        if _out_mode is not None:
+            if fts_results and emb_results:
+                _out_mode.append("hybrid")
+            elif fts_results:
+                _out_mode.append("fts")
+            else:
+                _out_mode.append("semantic")
     else:
         # Fallback: keyword LIKE matching
         keyword_results = _keyword_search(conn, query, limit=fetch_limit)
+        if _out_mode is not None:
+            _out_mode.append("keyword")
         if not keyword_results:
             return []
         merged = keyword_results
