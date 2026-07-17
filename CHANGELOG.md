@@ -37,6 +37,9 @@
   preventing inherited transport descriptors from keeping Unix servers and
   workers alive after host disconnects, while normal non-interactive CLI/CI
   builds retain the faster process-pool default (PR #615).
+- Heavy `get_minimal_context` work now uses the same explicit worker-thread
+  wrapper as the other long-running MCP tools, independent of FastMCP's sync
+  dispatch behavior (replacing PR #394).
 - Corrected TESTED_BY edge direction across graph, refactor, and transitive-test
   consumers, with a parser-to-store-to-query regression (#527/#559/#598 class).
 - C# receiver calls now capture bare, chained, member, and null-conditional
