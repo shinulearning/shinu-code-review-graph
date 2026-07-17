@@ -179,6 +179,31 @@ class TestCodeParser:
         assert "create_auth_service" in func_names
         assert "process_request" in func_names
 
+    def test_parse_python_class_decorators_persisted(self):
+        """Stacked Python class decorators reach downstream metadata consumers."""
+        from code_review_graph.flows import _has_framework_decorator
+
+        source = b"""
+@Component(\"widget-card\")
+@dataclass(frozen=True)
+class Widget:
+    pass
+
+class Plain:
+    pass
+"""
+        nodes, _ = self.parser.parse_bytes(Path("models.py"), source)
+        widget = next(node for node in nodes if node.name == "Widget")
+        plain = next(node for node in nodes if node.name == "Plain")
+
+        expected = ["Component(\"widget-card\")", "dataclass(frozen=True)"]
+        assert widget.kind == "Class"
+        assert widget.modifiers == ",".join(expected)
+        assert widget.extra["decorators"] == expected
+        assert _has_framework_decorator(widget)
+        assert plain.modifiers is None
+        assert "decorators" not in plain.extra
+
     def test_parse_python_edges(self):
         nodes, edges = self.parser.parse_file(FIXTURES / "sample_python.py")
 

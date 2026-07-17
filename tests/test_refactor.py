@@ -423,6 +423,21 @@ class TestFindDeadCode:
         dead_names = {d["name"] for d in dead}
         assert "ClipboardButtonComponent" not in dead_names
 
+    def test_find_dead_code_excludes_parsed_python_decorated_class(self):
+        """Decorator metadata must survive parsing before dead-code analysis."""
+        from code_review_graph.parser import CodeParser
+
+        nodes, _ = CodeParser().parse_bytes(
+            Path("/repo/widget.py"),
+            b'@Component("widget-card")\nclass Widget:\n    pass\n',
+        )
+        widget = next(node for node in nodes if node.name == "Widget")
+        self.store.upsert_node(widget)
+        self.store.commit()
+
+        dead_names = {item["name"] for item in find_dead_code(self.store)}
+        assert "Widget" not in dead_names
+
     def test_find_dead_code_excludes_property(self):
         """Functions decorated with @property are not dead code."""
         self.store.upsert_node(NodeInfo(

@@ -898,6 +898,21 @@ def _modifier_annotation_names(node) -> list[str]:
     return names
 
 
+def _python_decorator_names(node) -> list[str]:
+    """Return decorators wrapping a Python definition in source order."""
+    parent = node.parent
+    if parent is None or parent.type != "decorated_definition":
+        return []
+
+    names: list[str] = []
+    for sibling in parent.children:
+        if sibling.type != "decorator":
+            continue
+        text = sibling.text.decode("utf-8", errors="replace")
+        names.append(text.lstrip("@").strip())
+    return names
+
+
 def _csharp_attribute_names(node) -> list[str]:
     """Return C# attribute names from ``attribute_list`` children of *node*.
 
@@ -4951,6 +4966,8 @@ class CodeParser:
             class_decorators = list(class_annotations)
         else:
             class_decorators = _modifier_annotation_names(child)
+            if language == "python":
+                class_decorators.extend(_python_decorator_names(child))
             if language == "csharp":
                 class_decorators.extend(_csharp_attribute_names(child))
         class_modifiers: Optional[str] = (
