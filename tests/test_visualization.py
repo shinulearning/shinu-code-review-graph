@@ -1,6 +1,9 @@
 """Tests for graph visualization export."""
 
 import json
+import re
+import shutil
+import subprocess
 
 import pytest
 
@@ -341,6 +344,53 @@ def test_community_mode_uses_id_selector_for_svg(large_store, tmp_path):
     assert 'id="graph-svg"' in content, (
         "Aggregated template's <svg> must have id='graph-svg' for the selector to work"
     )
+
+
+def _assert_responsive_graph_script(content):
+    """Check the generated graph script remains responsive and valid JavaScript."""
+    assert 'var svgEl = document.getElementById("graph-svg");' in content
+    assert "function getW()" in content
+    assert "function getH()" in content
+    assert "function fitGraph(retries)" in content
+    assert "if (retries === undefined) retries = 10;" in content
+    assert "requestAnimationFrame(function() { fitGraph(retries - 1); });" in content
+    assert 'window.addEventListener("resize", function() {' in content
+    assert r'window.addEventListener(\"resize\"' not in content
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node.js is required for generated JavaScript syntax validation")
+    inline_scripts = re.findall(r"<script(?:\s[^>]*)?>(.*?)</script>", content, re.DOTALL)
+    assert inline_scripts
+    for script in inline_scripts:
+        if not script.strip():
+            continue
+        result = subprocess.run(
+            [node, "--check"],
+            input=script,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
+
+
+def test_full_mode_retries_layout_and_tracks_viewport(store_with_data, tmp_path):
+    """Full mode must recover if layout is unavailable before the first paint."""
+    from code_review_graph.visualization import generate_html
+
+    output_path = tmp_path / "graph.html"
+    generate_html(store_with_data, output_path, mode="full")
+    _assert_responsive_graph_script(output_path.read_text())
+
+
+def test_community_mode_retries_layout_and_tracks_viewport(large_store, tmp_path):
+    """Aggregated mode must use the same bounded layout recovery path."""
+    from code_review_graph.visualization import generate_html
+
+    output_path = tmp_path / "community.html"
+    generate_html(large_store, output_path, mode="community")
+    _assert_responsive_graph_script(output_path.read_text())
 
 
 def test_generate_html_includes_focus_visible(store_with_data, tmp_path):
