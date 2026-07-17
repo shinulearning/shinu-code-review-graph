@@ -35,15 +35,86 @@ def _zed_settings_path() -> Path:
 def _copilot_vscode_detected() -> bool:
     """Return whether a GitHub Copilot extension is installed for VS Code."""
     home = Path.home()
-    for extensions_dir in (
+    extension_dirs = [
         home / ".vscode" / "extensions",
         home / ".vscode-insiders" / "extensions",
-    ):
+    ]
+
+    system = platform.system()
+    if system == "Darwin":
+        for applications_dir in (Path("/Applications"), home / "Applications"):
+            for app_name in (
+                "Visual Studio Code.app",
+                "Visual Studio Code - Insiders.app",
+            ):
+                extension_dirs.append(
+                    applications_dir
+                    / app_name
+                    / "Contents"
+                    / "Resources"
+                    / "app"
+                    / "extensions"
+                )
+    elif system == "Windows":
+        for env_name in ("LOCALAPPDATA", "PROGRAMFILES", "PROGRAMFILES(X86)"):
+            if install_root := os.environ.get(env_name):
+                for app_name in ("Microsoft VS Code", "Microsoft VS Code Insiders"):
+                    extension_dirs.append(
+                        Path(install_root)
+                        / app_name
+                        / "resources"
+                        / "app"
+                        / "extensions"
+                    )
+    elif system == "Linux":
+        extension_dirs.extend(
+            [
+                Path("/usr/share/code/resources/app/extensions"),
+                Path("/usr/share/code-insiders/resources/app/extensions"),
+                Path("/usr/lib/code/resources/app/extensions"),
+                Path("/opt/visual-studio-code/resources/app/extensions"),
+                Path("/snap/code/current/usr/share/code/resources/app/extensions"),
+            ]
+        )
+
+    for command in ("code", "code-insiders"):
+        if executable := shutil.which(command):
+            try:
+                parents = Path(executable).resolve().parents[:6]
+            except OSError:
+                continue
+            for parent in parents:
+                extension_dirs.extend(
+                    [
+                        parent / "extensions",
+                        parent / "resources" / "app" / "extensions",
+                        parent / "Resources" / "app" / "extensions",
+                    ]
+                )
+
+    for extensions_dir in dict.fromkeys(extension_dirs):
         try:
-            if any(path.name.startswith("github.copilot-") for path in extensions_dir.iterdir()):
-                return True
+            extension_paths = list(extensions_dir.iterdir())
         except OSError:
             continue
+        for extension_path in extension_paths:
+            name = extension_path.name.lower()
+            if name.startswith("github.copilot-"):
+                return True
+            if "copilot" not in name:
+                continue
+            try:
+                manifest = json.loads(
+                    (extension_path / "package.json").read_text(encoding="utf-8")
+                )
+            except (OSError, json.JSONDecodeError):
+                continue
+            if (
+                str(manifest.get("publisher", "")).lower() == "github"
+                and str(manifest.get("name", "")).lower()
+                in {"copilot", "copilot-chat"}
+            ):
+                return True
     return False
 
 
