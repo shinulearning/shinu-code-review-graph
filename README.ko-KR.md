@@ -1,4 +1,4 @@
-<h1 align="center">code-review-graph</h1>
+<h1 align="center">shinu-code-review-graph</h1>
 
 > **참고:** 이 번역은 이전 릴리스를 기준으로 합니다. 벤치마크 수치와 플랫폼 목록은 [영문 README](README.md)보다 오래되었을 수 있습니다.
 
