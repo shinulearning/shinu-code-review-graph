@@ -1,4 +1,4 @@
-<h1 align="center">code-review-graph</h1>
+<h1 align="center">shinu-code-review-graph</h1>
 
 <p align="center">
   <strong>Stop burning tokens. Start reviewing smarter.</strong>
